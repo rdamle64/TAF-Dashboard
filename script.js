@@ -13,7 +13,8 @@ async function runDashboard() {
         html += `<div class="airport-block"><div class="title">${airport}</div>`;
 
         // Fetch TAF
-        const tafUrl = `https://aviationweather.gov/api/data/taf?ids=${airport}&format=json`;
+        const tafUrl = `https://corsproxy.io/?https://aviationweather.gov/api/data/taf?ids=${airport}&format=json`;
+
         const tafResponse = await fetch(tafUrl);
         const tafData = await tafResponse.json();
 
@@ -50,7 +51,8 @@ if (period.wx_string && typeof period.wx_string === "string") {
 
         // Fetch METAR if checked
         if (includeMetar) {
-            const metarUrl = `https://aviationweather.gov/api/data/metar?ids=${airport}&format=json`;
+            const metarUrl = `https://corsproxy.io/?https://aviationweather.gov/api/data/metar?ids=${airport}&format=json`;
+
             const metarResponse = await fetch(metarUrl);
             const metarData = await metarResponse.json();
 
