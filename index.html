@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>TAF/METAR Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        input, button { font-size: 16px; padding: 6px; }
+        .section { margin-top: 20px; }
+        .airport-block { margin-bottom: 25px; padding: 10px; border: 1px solid #ccc; }
+        .title { font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+    </style>
+</head>
+
+<body>
+
+<h2>TAF / METAR Dashboard</h2>
+
+<label>Airports (comma separated):</label><br>
+<input id="airportInput" type="text" size="50"
+       value="KLNS,KRDG,KABE,KPNE,KPHL,KILG"><br><br>
+
+<label><input type="checkbox" id="includeMetar"> Include METAR</label><br><br>
+
+<button onclick="runDashboard()">Run</button>
+
+<div id="output" class="section"></div>
+
+<script src="script.js"></script>
+
+<script>
+    window.onload = runDashboard;
+</script>
+
+</body>
+</html>
