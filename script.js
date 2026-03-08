@@ -2,6 +2,16 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Retry wrapper to fix "first request always fails" issue
+async function fetchWithRetry(url) {
+    try {
+        return await fetch(url);
+    } catch (err) {
+        await sleep(400); // wait a moment before retry
+        return await fetch(url);
+    }
+}
+
 async function runDashboard() {
     const airports = document.getElementById("airportInput").value
         .split(",")
@@ -15,7 +25,8 @@ async function runDashboard() {
     let html = "";
 
     for (const airport of airports) {
-        // small delay to avoid proxy / upstream throttling
+
+        // Prevent proxy throttling
         await sleep(300);
 
         html += `<div class="airport-block"><div class="title">${airport}</div>`;
@@ -28,7 +39,7 @@ async function runDashboard() {
             encodeURIComponent(`https://aviationweather.gov/api/data/taf?ids=${airport}`);
 
         try {
-            const tafResponse = await fetch(tafUrl);
+            const tafResponse = await fetchWithRetry(tafUrl);
             const tafText = await tafResponse.text();
 
             if (!tafText || tafText.trim().length === 0) {
@@ -41,7 +52,7 @@ async function runDashboard() {
         }
 
         // -------------------------
-        // RAW METAR (via AllOrigins, optional)
+        // RAW METAR (via AllOrigins)
         // -------------------------
         if (includeMetar) {
             const metarUrl =
@@ -49,7 +60,7 @@ async function runDashboard() {
                 encodeURIComponent(`https://aviationweather.gov/api/data/metar?ids=${airport}`);
 
             try {
-                const metarResponse = await fetch(metarUrl);
+                const metarResponse = await fetchWithRetry(metarUrl);
                 const metarText = await metarResponse.text();
 
                 if (!metarText || metarText.trim().length === 0) {
