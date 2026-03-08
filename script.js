@@ -16,7 +16,9 @@ async function runDashboard() {
         const tafUrl = `https://corsproxy.io/?https://aviationweather.gov/api/data/taf?ids=${airport}&format=json`;
 
         const tafResponse = await fetch(tafUrl);
-        const tafData = await tafResponse.json();
+        const tafRaw = await tafResponse.json();
+const tafData = tafRaw.data;   // <-- unwrap the proxy payload
+
 
         if (tafData.length === 0) {
             html += "No TAF available.<br>";
@@ -54,7 +56,9 @@ if (period.wx_string && typeof period.wx_string === "string") {
             const metarUrl = `https://corsproxy.io/?https://aviationweather.gov/api/data/metar?ids=${airport}&format=json`;
 
             const metarResponse = await fetch(metarUrl);
-            const metarData = await metarResponse.json();
+            const metarRaw = await metarResponse.json();
+const metarData = metarRaw.data;
+
 
             if (metarData.length > 0) {
                 const m = metarData[0];
