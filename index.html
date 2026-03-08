@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>TAF/METAR Dashboard</title>
+    <title>TAF/METAR Dashboard v15</title>
 
     <style>
         body {
@@ -55,12 +55,17 @@
             background: #f0f0f0;
             border-radius: 6px;
         }
+
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
     </style>
 </head>
 
 <body>
 
-    <h1>TAF / METAR Dashboard</h1>
+    <h1>TAF / METAR Dashboard v15</h1>
 
     <div class="input-section">
 
@@ -85,10 +90,8 @@
 
     <div id="output"></div>
 
-    <!-- Your script -->
-    <script src="script.js?v=13"></script>
+    <script src="script.js?v=15"></script>
 
-    <!-- Auto-run on page load -->
     <script>
         window.onload = runDashboard;
     </script>
