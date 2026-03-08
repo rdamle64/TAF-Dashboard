@@ -1,7 +1,12 @@
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function runDashboard() {
     const airports = document.getElementById("airportInput").value
         .split(",")
-        .map(a => a.trim().toUpperCase());
+        .map(a => a.trim().toUpperCase())
+        .filter(a => a.length > 0);
 
     const includeMetar = document.getElementById("includeMetar").checked;
     const output = document.getElementById("output");
@@ -10,13 +15,17 @@ async function runDashboard() {
     let html = "";
 
     for (const airport of airports) {
+        // small delay to avoid proxy / upstream throttling
+        await sleep(300);
+
         html += `<div class="airport-block"><div class="title">${airport}</div>`;
 
         // -------------------------
-        // FETCH RAW TAF TEXT
+        // RAW TAF (via AllOrigins)
         // -------------------------
         const tafUrl =
-            `https://corsproxy.io/?https://aviationweather.gov/api/data/taf?ids=${airport}`;
+            `https://api.allorigins.win/raw?url=` +
+            encodeURIComponent(`https://aviationweather.gov/api/data/taf?ids=${airport}`);
 
         try {
             const tafResponse = await fetch(tafUrl);
@@ -25,18 +34,19 @@ async function runDashboard() {
             if (!tafText || tafText.trim().length === 0) {
                 html += `<p>No TAF data available.</p>`;
             } else {
-                html += `<b>TAF:</b><br><pre>${tafText}</pre>`;
+                html += `<b>TAF:</b><br><pre>${tafText.trim()}</pre>`;
             }
         } catch (err) {
             html += `<p>Error loading TAF data.</p>`;
         }
 
         // -------------------------
-        // FETCH RAW METAR TEXT (optional)
+        // RAW METAR (via AllOrigins, optional)
         // -------------------------
         if (includeMetar) {
             const metarUrl =
-                `https://corsproxy.io/?https://aviationweather.gov/api/data/metar?ids=${airport}`;
+                `https://api.allorigins.win/raw?url=` +
+                encodeURIComponent(`https://aviationweather.gov/api/data/metar?ids=${airport}`);
 
             try {
                 const metarResponse = await fetch(metarUrl);
@@ -45,7 +55,7 @@ async function runDashboard() {
                 if (!metarText || metarText.trim().length === 0) {
                     html += `<p>No METAR data available.</p>`;
                 } else {
-                    html += `<b>METAR:</b><br><pre>${metarText}</pre>`;
+                    html += `<b>METAR:</b><br><pre>${metarText.trim()}</pre>`;
                 }
             } catch (err) {
                 html += `<p>Error loading METAR data.</p>`;
@@ -55,6 +65,5 @@ async function runDashboard() {
         html += `</div>`; // close airport block
     }
 
-    // After processing all airports, write final HTML
-    output.innerHTML = html;
+    output.innerHTML = html || "No airports specified.";
 }
