@@ -12,93 +12,88 @@ async function runDashboard() {
     for (const airport of airports) {
         html += `<div class="airport-block"><div class="title">${airport}</div>`;
 
-        // Fetch TAF
+        // -------------------------
+        // FETCH TAF
+        // -------------------------
         const tafUrl = `https://corsproxy.io/?https://aviationweather.gov/api/data/taf?ids=${airport}&format=json`;
 
-        const tafResponse = await fetch(tafUrl);
-        const tafRaw = await tafResponse.json();
-        const tafData = tafRaw.data;   // <-- unwrap the proxy payload
+        try {
+            const tafResponse = await fetch(tafUrl);
+            const tafRaw = await tafResponse.json();
+            const tafData = tafRaw.data;   // unwrap proxy payload
 
+            // Safety check: TAF array must exist and have at least one entry
+            if (!Array.isArray(tafData) || tafData.length === 0) {
+                html += `<p>No TAF data available.</p>`;
+                html += `</div>`;
+                continue;
+            }
 
-        if (!Array.isArray(tafData) || tafData.length === 0) {
-    html += `<p>No TAF data available.</p>`;
-    output.innerHTML += html;
-    continue;
-}
- else {
             const taf = tafData[0];
+
+            // Safety check: forecast must exist and be an array
+            if (!taf || !Array.isArray(taf.forecast)) {
+                html += `<p>No TAF forecast available.</p>`;
+                html += `</div>`;
+                continue;
+            }
+
             html += `<b>Issued:</b> ${taf.issue_time}<br>`;
             html += `<b>Valid:</b> ${taf.valid_time_from} → ${taf.valid_time_to}<br><br>`;
 
-         // Safety check to prevent crashes if forecast is missing
-if (!tafData || !tafData[0] || !tafData[0].forecast) {
-    html += `<p>No TAF data available.</p>`;
-    output.innerHTML += html;
-    continue; // move to next airport
-}
-   taf.forecast.forEach((period, idx) => {
+            taf.forecast.forEach((period, idx) => {
                 html += `<b>Period ${idx + 1}:</b><br>`;
-                html += `Start: ${period.fcst_time_from}<br>`;
-                html += `End: ${period.fcst_time_to}<br>`;
-
-                if (period.wind_dir && period.wind_speed) {
-                    html += `Wind: ${period.wind_dir}${period.wind_speed}KT<br>`;
+                html += `&nbsp;&nbsp;<b>From:</b> ${period.fcst_time_from}<br>`;
+                html += `&nbsp;&nbsp;<b>To:</b> ${period.fcst_time_to}<br>`;
+                if (period.wind_speed_kt !== undefined) {
+                    html += `&nbsp;&nbsp;<b>Wind:</b> ${period.wind_dir_degrees}° @ ${period.wind_speed_kt} kt<br>`;
                 }
-
-                if (period.visibility) {
-                    html += `Visibility: ${period.visibility}<br>`;
+                if (period.visibility_statute_mi !== undefined) {
+                    html += `&nbsp;&nbsp;<b>Visibility:</b> ${period.visibility_statute_mi} sm<br>`;
                 }
-
-              if (period.clouds && Array.isArray(period.clouds)) {
-    html += `Clouds: ${period.clouds.map(c => c.cover + (c.base || "")).join(", ")}<br>`;
-}
-
-if (period.wx_string && typeof period.wx_string === "string") {
-    html += `Weather: ${translateWx(period.wx_string)}<br>`;
-}
+                if (period.wx_string) {
+                    html += `&nbsp;&nbsp;<b>Weather:</b> ${period.wx_string}<br>`;
+                }
                 html += `<br>`;
             });
+
+        } catch (err) {
+            html += `<p>Error loading TAF data.</p>`;
+            html += `</div>`;
+            continue;
         }
 
-        // Fetch METAR if checked
+        // -------------------------
+        // FETCH METAR (optional)
+        // -------------------------
         if (includeMetar) {
             const metarUrl = `https://corsproxy.io/?https://aviationweather.gov/api/data/metar?ids=${airport}&format=json`;
 
-            const metarResponse = await fetch(metarUrl);
-            const metarRaw = await metarResponse.json();
-            const metarData = metarRaw.data;
+            try {
+                const metarResponse = await fetch(metarUrl);
+                const metarRaw = await metarResponse.json();
+                const metarData = metarRaw.data;   // unwrap proxy payload
 
+                // Safety check: METAR array must exist and have at least one entry
+                if (!Array.isArray(metarData) || metarData.length === 0) {
+                    html += `<p>No METAR data available.</p>`;
+                    html += `</div>`;
+                    continue;
+                }
 
-           if (!Array.isArray(metarData) || metarData.length === 0) {
-    html += `<p>No METAR data available.</p>`;
-    output.innerHTML += html;
-    continue;
-}
+                const metar = metarData[0];
+                html += `<b>METAR:</b> ${metar.raw_text}<br>`;
 
+            } catch (err) {
+                html += `<p>Error loading METAR data.</p>`;
+                html += `</div>`;
+                continue;
+            }
         }
 
-        html += `</div>`;
+        html += `</div>`; // close airport block
     }
 
+    // After processing all airports, write final HTML
     output.innerHTML = html;
-}
-
-function translateWx(code) {
-    const table = {
-        "BR": "Mist",
-        "FG": "Fog",
-        "HZ": "Haze",
-        "RA": "Rain",
-        "DZ": "Drizzle",
-        "SN": "Snow",
-        "SG": "Snow Grains",
-        "PL": "Ice Pellets",
-        "TS": "Thunderstorm",
-        "VCSH": "Showers in Vicinity",
-        "SH": "Showers",
-        "FZRA": "Freezing Rain",
-        "FZDZ": "Freezing Drizzle"
-    };
-
-    return `${code}: ${table[code] || "Unknown"}`;
 }
