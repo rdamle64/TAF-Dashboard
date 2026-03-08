@@ -2,12 +2,12 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Retry wrapper to fix "first request always fails" issue
+// Retry wrapper
 async function fetchWithRetry(url) {
     try {
         return await fetch(url);
     } catch (err) {
-        await sleep(400); // wait a moment before retry
+        await sleep(400);
         return await fetch(url);
     }
 }
@@ -24,6 +24,22 @@ async function runDashboard() {
 
     let html = "";
 
+    // ----------------------------------------------------
+    // PROXY WARM-UP: Fixes “first request always times out”
+    // ----------------------------------------------------
+    try {
+        await fetchWithRetry(
+            "https://api.allorigins.win/raw?url=" +
+            encodeURIComponent("https://aviationweather.gov/api/data/taf?ids=KJFK")
+        );
+        await sleep(300); // give proxy time to cache upstream
+    } catch (err) {
+        // warm-up failure is harmless
+    }
+
+    // ----------------------------------------------------
+    // MAIN LOOP
+    // ----------------------------------------------------
     for (const airport of airports) {
 
         // Prevent proxy throttling
@@ -32,7 +48,7 @@ async function runDashboard() {
         html += `<div class="airport-block"><div class="title">${airport}</div>`;
 
         // -------------------------
-        // RAW TAF (via AllOrigins)
+        // RAW TAF
         // -------------------------
         const tafUrl =
             `https://api.allorigins.win/raw?url=` +
@@ -52,7 +68,7 @@ async function runDashboard() {
         }
 
         // -------------------------
-        // RAW METAR (via AllOrigins)
+        // RAW METAR
         // -------------------------
         if (includeMetar) {
             const metarUrl =
@@ -73,7 +89,7 @@ async function runDashboard() {
             }
         }
 
-        html += `</div>`; // close airport block
+        html += `</div>`;
     }
 
     output.innerHTML = html || "No airports specified.";
