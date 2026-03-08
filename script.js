@@ -4,17 +4,18 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Retry wrapper
-async function fetchWithRetry(url) {
-    try {
-        return await fetch(url);
-    } catch (err) {
-        await sleep(400);
-        return await fetch(url);
+async function fetchWithRetry(url, attempts = 2) {
+    for (let i = 0; i < attempts; i++) {
+        try {
+            return await fetch(url);
+        } catch (err) {
+            await sleep(300);
+        }
     }
+    throw new Error("Fetch failed after retries");
 }
 
-// ---------- Airport coordinates (extend as needed) ----------
+// ---------- Airport coordinates ----------
 
 const AIRPORT_COORDS = {
     KMQS: { lat: 39.875, lon: -75.865 },
@@ -27,22 +28,21 @@ const AIRPORT_COORDS = {
     KTTN: { lat: 40.277, lon: -74.816 }
 };
 
-function toRad(deg) {
-    return deg * Math.PI / 180;
-}
+function toRad(deg) { return deg * Math.PI / 180; }
 
 function distanceNm(homeCoords, airportCode) {
     const coords = AIRPORT_COORDS[airportCode];
-    if (!coords || !homeCoords) return null;
+    if (!coords) return null;
 
-    const R = 3440.065; // nautical miles
+    const R = 3440.065;
     const dLat = toRad(coords.lat - homeCoords.lat);
     const dLon = toRad(coords.lon - homeCoords.lon);
     const lat1 = toRad(homeCoords.lat);
     const lat2 = toRad(coords.lat);
 
-    const h = Math.sin(dLat / 2) ** 2 +
-              Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    const h = Math.sin(dLat/2)**2 +
+              Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+
     return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -50,7 +50,6 @@ function sortAirportsByDistance(airports, homeCoords) {
     return airports.slice().sort((a, b) => {
         const da = distanceNm(homeCoords, a);
         const db = distanceNm(homeCoords, b);
-
         if (da === null && db === null) return a.localeCompare(b);
         if (da === null) return 1;
         if (db === null) return -1;
@@ -58,7 +57,7 @@ function sortAirportsByDistance(airports, homeCoords) {
     });
 }
 
-// ---------- METAR helpers (category + wind/gust) ----------
+// ---------- METAR helpers ----------
 
 function classifyFlightCategory(metarText) {
     const visMatch = metarText.match(/ (\d+)\s*SM/);
@@ -88,19 +87,15 @@ function decorateWind(metarText) {
     return metarText.replace(
         /\b(\d{3})(\d{2,3})(G(\d{2,3}))?KT\b/,
         (match, dir, spd, _gFull, gust) => {
-            const dirNum = parseInt(dir, 10);
-            const arrow = windArrow(dirNum);
-            let core = `<span class="wind-dir">${dir}°${arrow}</span>` +
-                       ` <span class="wind-spd">${spd}KT</span>`;
-            if (gust) {
-                core += ` <span class="wind-gust">G${gust}</span>`;
-            }
+            const arrow = windArrow(parseInt(dir, 10));
+            let core = `<span class="wind-dir">${dir}°${arrow}</span> <span class="wind-spd">${spd}KT</span>`;
+            if (gust) core += ` <span class="wind-gust">G${gust}</span>`;
             return core;
         }
     );
 }
 
-// ---------- TAF helpers (format + color) ----------
+// ---------- TAF helpers ----------
 
 function formatTaf(tafText) {
     return tafText
@@ -111,20 +106,58 @@ function formatTaf(tafText) {
 }
 
 function colorizeTaf(tafText) {
-    let t = tafText;
-    t = t.replace(/(^|\n)(FM\d{6})/g, (m, pre, fm) =>
-        `${pre}<span class="taf-fm">${fm}</span>`
-    );
-    t = t.replace(/(^|\n)(TEMPO\s+\d{4}\/\d{4})/g, (m, pre, tempo) =>
-        `${pre}<span class="taf-tempo">${tempo}</span>`
-    );
-    t = t.replace(/(^|\n)(PROB\d{2}\s+\d{4}\/\d{4})/g, (m, pre, prob) =>
-        `${pre}<span class="taf-prob">${prob}</span>`
-    );
-    return t;
+    return tafText
+        .replace(/(^|\n)(FM\d{6})/g, "$1<span class='taf-fm'>$2</span>")
+        .replace(/(^|\n)(TEMPO\s+\d{4}\/\d{4})/g, "$1<span class='taf-tempo'>$2</span>")
+        .replace(/(^|\n)(PROB\d{2}\s+\d{4}\/\d{4})/g, "$1<span class='taf-prob'>$2</span>");
 }
 
-// ---------- Main ----------
+// ---------- v15: Sequential Loading ----------
+
+async function loadAirport(airport, includeMetar, container) {
+    container.innerHTML = `<div class="title">${airport}</div><p class="loading">Loading...</p>`;
+
+    // TAF
+    try {
+        const tafUrl = "https://api.allorigins.win/raw?url=" +
+            encodeURIComponent(`https://aviationweather.gov/api/data/taf?ids=${airport}`);
+
+        const tafResponse = await fetchWithRetry(tafUrl, 3);
+        const tafText = await tafResponse.text();
+
+        if (tafText.trim().length > 0) {
+            const formatted = formatTaf(tafText.trim());
+            const colored = colorizeTaf(formatted);
+            container.innerHTML = `<div class="title">${airport}</div><b>TAF:</b><br><pre class="taf">${colored}</pre>`;
+        } else {
+            container.innerHTML = `<div class="title">${airport}</div><p>No TAF data.</p>`;
+        }
+    } catch {
+        container.innerHTML = `<div class="title">${airport}</div><p>Error loading TAF.</p>`;
+    }
+
+    // METAR
+    if (includeMetar) {
+        try {
+            const metarUrl = "https://api.allorigins.win/raw?url=" +
+                encodeURIComponent(`https://aviationweather.gov/api/data/metar?ids=${airport}`);
+
+            const metarResponse = await fetchWithRetry(metarUrl, 3);
+            const metarText = await metarResponse.text();
+
+            if (metarText.trim().length > 0) {
+                const trimmed = metarText.trim();
+                const category = classifyFlightCategory(trimmed);
+                const decorated = decorateWind(trimmed);
+                container.innerHTML += `<b>METAR:</b><br><pre class="metar ${category}">${decorated}</pre>`;
+            } else {
+                container.innerHTML += `<p>No METAR data.</p>`;
+            }
+        } catch {
+            container.innerHTML += `<p>Error loading METAR.</p>`;
+        }
+    }
+}
 
 async function runDashboard() {
     const airportsRaw = document.getElementById("airportInput").value
@@ -132,87 +165,28 @@ async function runDashboard() {
         .map(a => a.trim().toUpperCase())
         .filter(a => a.length > 0);
 
-    // Home airport from input box
-    const homeInput = document.getElementById("homeAirport");
-    const homeCode = homeInput
-        ? (homeInput.value.trim().toUpperCase() || "KMQS")
-        : "KMQS";
-
+    const homeCode = document.getElementById("homeAirport").value.trim().toUpperCase() || "KMQS";
     const homeCoords = AIRPORT_COORDS[homeCode] || AIRPORT_COORDS["KMQS"];
 
-    // Sort airports by distance from home
-    let airports;
-    if (homeCoords) {
-        airports = sortAirportsByDistance(airportsRaw, homeCoords);
-    } else {
-        airports = airportsRaw.slice().sort();
-    }
-
+    const airports = sortAirportsByDistance(airportsRaw, homeCoords);
     const includeMetar = document.getElementById("includeMetar").checked;
+
     const output = document.getElementById("output");
-    output.innerHTML = "Loading...";
+    output.innerHTML = "";
 
-    let html = "";
+    // Create empty containers first
+    const containers = {};
+    airports.forEach(a => {
+        const div = document.createElement("div");
+        div.className = "airport-block";
+        div.innerHTML = `<div class="title">${a}</div><p class="loading">Waiting...</p>`;
+        output.appendChild(div);
+        containers[a] = div;
+    });
 
-    // Warm-up to avoid first-request timeout
-    try {
-        await fetchWithRetry(
-            "https://api.allorigins.win/raw?url=" +
-            encodeURIComponent("https://aviationweather.gov/api/data/taf?ids=KJFK")
-        );
-        await sleep(300);
-    } catch (err) {}
-
+    // Sequential loading
     for (const airport of airports) {
-        await sleep(300); // throttle
-
-        html += `<div class="airport-block"><div class="title">${airport}</div>`;
-
-        // ----- TAF -----
-        const tafUrl =
-            "https://api.allorigins.win/raw?url=" +
-            encodeURIComponent(`https://aviationweather.gov/api/data/taf?ids=${airport}`);
-
-        try {
-            const tafResponse = await fetchWithRetry(tafUrl);
-            const tafText = await tafResponse.text();
-
-            if (!tafText || tafText.trim().length === 0) {
-                html += `<p>No TAF data available.</p>`;
-            } else {
-                const formatted = formatTaf(tafText.trim());
-                const colored = colorizeTaf(formatted);
-                html += `<b>TAF:</b><br><pre class="taf">${colored}</pre>`;
-            }
-        } catch (err) {
-            html += `<p>Error loading TAF data.</p>`;
-        }
-
-        // ----- METAR -----
-        if (includeMetar) {
-            const metarUrl =
-                "https://api.allorigins.win/raw?url=" +
-                encodeURIComponent(`https://aviationweather.gov/api/data/metar?ids=${airport}`);
-
-            try {
-                const metarResponse = await fetchWithRetry(metarUrl);
-                const metarText = await metarResponse.text();
-
-                if (!metarText || metarText.trim().length === 0) {
-                    html += `<p>No METAR data available.</p>`;
-                } else {
-                    const trimmed = metarText.trim();
-                    const category = classifyFlightCategory(trimmed);
-                    const decorated = decorateWind(trimmed);
-                    html += `<b>METAR:</b><br><pre class="metar ${category}">${decorated}</pre>`;
-                }
-            } catch (err) {
-                html += `<p>Error loading METAR data.</p>`;
-            }
-        }
-
-        html += `</div>`;
+        await loadAirport(airport, includeMetar, containers[airport]);
+        await sleep(300);
     }
-
-    output.innerHTML = html || "No airports specified.";
 }
