@@ -37,14 +37,13 @@ async function runDashboard() {
                     html += `Visibility: ${period.visibility}<br>`;
                 }
 
-                if (period.clouds) {
-                    html += `Clouds: ${period.clouds.map(c => c.cover + c.base).join(", ")}<br>`;
-                }
+              if (period.clouds && Array.isArray(period.clouds)) {
+    html += `Clouds: ${period.clouds.map(c => c.cover + (c.base || "")).join(", ")}<br>`;
+}
 
-                if (period.wx_string) {
-                    html += `Weather: ${translateWx(period.wx_string)}<br>`;
-                }
-
+if (period.wx_string && typeof period.wx_string === "string") {
+    html += `Weather: ${translateWx(period.wx_string)}<br>`;
+}
                 html += `<br>`;
             });
         }
