@@ -27,7 +27,13 @@ const tafData = tafRaw.data;   // <-- unwrap the proxy payload
             html += `<b>Issued:</b> ${taf.issue_time}<br>`;
             html += `<b>Valid:</b> ${taf.valid_time_from} → ${taf.valid_time_to}<br><br>`;
 
-            taf.forecast.forEach((period, idx) => {
+         // Safety check to prevent crashes if forecast is missing
+if (!tafData || !tafData[0] || !tafData[0].forecast) {
+    html += `<p>No TAF data available.</p>`;
+    output.innerHTML += html;
+    continue; // move to next airport
+}
+   taf.forecast.forEach((period, idx) => {
                 html += `<b>Period ${idx + 1}:</b><br>`;
                 html += `Start: ${period.fcst_time_from}<br>`;
                 html += `End: ${period.fcst_time_to}<br>`;
