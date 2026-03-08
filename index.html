@@ -1,36 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>TAF/METAR Dashboard</title>
+
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        input, button { font-size: 16px; padding: 6px; }
-        .section { margin-top: 20px; }
-        .airport-block { margin-bottom: 25px; padding: 10px; border: 1px solid #ccc; }
-        .title { font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+
+        .input-section {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+
+        .airport-block {
+            background: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        /* METAR category colors */
+        .metar.vfr { background: #d6ffd6; }
+        .metar.mvfr { background: #fff7cc; }
+        .metar.ifr { background: #ffd6d6; }
+
+        /* TAF color coding */
+        .taf-fm { color: #0055cc; font-weight: bold; }
+        .taf-tempo { color: #cc5500; font-weight: bold; }
+        .taf-prob { color: #990099; font-weight: bold; }
+
+        /* Wind highlighting */
+        .wind-dir { font-weight: bold; color: #003399; }
+        .wind-spd { font-weight: bold; }
+        .wind-gust { font-weight: bold; color: #cc0000; }
+
+        pre {
+            white-space: pre-wrap;
+            font-size: 14px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 6px;
+        }
     </style>
 </head>
 
 <body>
 
-<h2>TAF / METAR Dashboard</h2>
+    <h1>TAF / METAR Dashboard</h1>
 
-<label>Airports (comma separated):</label><br>
-<input id="airportInput" type="text" size="50"
-       value="KLNS,KRDG,KABE,KPNE,KPHL,KILG"><br><br>
+    <div class="input-section">
 
-<label><input type="checkbox" id="includeMetar"> Include METAR</label><br><br>
+        <label for="homeAirport"><b>Home Airport:</b></label>
+        <input id="homeAirport" type="text" value="KMQS" style="width:100px;">
+        <br><br>
 
-<button onclick="runDashboard()">Run</button>
+        <label for="airportInput"><b>Airports (comma-separated):</b></label><br>
+        <input id="airportInput" type="text" style="width:300px;" value="KLNS, KRDG, KABE, KPNE, KPHL, KILG">
+        <br><br>
 
-<div id="output" class="section"></div>
+        <label>
+            <input type="checkbox" id="includeMetar" checked>
+            Include METAR
+        </label>
+        <br><br>
 
-<script src="script.js?v=13"></script>
+        <button onclick="runDashboard()">Run Dashboard</button>
+        <button onclick="runDashboard()">Retry All</button>
 
-<script>
-    window.onload = runDashboard;
-</script>
+    </div>
+
+    <div id="output"></div>
+
+    <script src="script.js?v=13"></script>
 
 </body>
 </html>
