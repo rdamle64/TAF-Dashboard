@@ -17,12 +17,15 @@ async function runDashboard() {
 
         const tafResponse = await fetch(tafUrl);
         const tafRaw = await tafResponse.json();
-const tafData = tafRaw.data;   // <-- unwrap the proxy payload
+        const tafData = tafRaw.data;   // <-- unwrap the proxy payload
 
 
-        if (tafData.length === 0) {
-            html += "No TAF available.<br>";
-        } else {
+        if (!Array.isArray(tafData) || tafData.length === 0) {
+    html += `<p>No TAF data available.</p>`;
+    output.innerHTML += html;
+    continue;
+}
+ else {
             const taf = tafData[0];
             html += `<b>Issued:</b> ${taf.issue_time}<br>`;
             html += `<b>Valid:</b> ${taf.valid_time_from} → ${taf.valid_time_to}<br><br>`;
@@ -63,14 +66,15 @@ if (period.wx_string && typeof period.wx_string === "string") {
 
             const metarResponse = await fetch(metarUrl);
             const metarRaw = await metarResponse.json();
-const metarData = metarRaw.data;
+            const metarData = metarRaw.data;
 
 
-            if (metarData.length > 0) {
-                const m = metarData[0];
-                html += `<b>METAR:</b><br>`;
-                html += `${m.raw_text}<br><br>`;
-            }
+           if (!Array.isArray(metarData) || metarData.length === 0) {
+    html += `<p>No METAR data available.</p>`;
+    output.innerHTML += html;
+    continue;
+}
+
         }
 
         html += `</div>`;
