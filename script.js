@@ -61,11 +61,9 @@ function sortAirportsByDistance(airports, homeCoords) {
 // ---------- METAR helpers (category + wind/gust) ----------
 
 function classifyFlightCategory(metarText) {
-    // Visibility (simple)
     const visMatch = metarText.match(/ (\d+)\s*SM/);
     let vis = visMatch ? parseInt(visMatch[1], 10) : 10;
 
-    // Ceiling: BKN/OVC groups
     const cigMatch = metarText.match(/ (BKN|OVC)(\d{3})/);
     let cig = cigMatch ? parseInt(cigMatch[2], 10) * 100 : 9999;
 
@@ -134,7 +132,7 @@ async function runDashboard() {
         .map(a => a.trim().toUpperCase())
         .filter(a => a.length > 0);
 
-    // Home airport from input box (prepopulate HTML with value="KMQS")
+    // Home airport from input box
     const homeInput = document.getElementById("homeAirport");
     const homeCode = homeInput
         ? (homeInput.value.trim().toUpperCase() || "KMQS")
@@ -142,7 +140,7 @@ async function runDashboard() {
 
     const homeCoords = AIRPORT_COORDS[homeCode] || AIRPORT_COORDS["KMQS"];
 
-    // Sort airports by distance from home (fallback to alpha if coords missing)
+    // Sort airports by distance from home
     let airports;
     if (homeCoords) {
         airports = sortAirportsByDistance(airportsRaw, homeCoords);
@@ -163,9 +161,7 @@ async function runDashboard() {
             encodeURIComponent("https://aviationweather.gov/api/data/taf?ids=KJFK")
         );
         await sleep(300);
-    } catch (err) {
-        // ignore warm-up failure
-    }
+    } catch (err) {}
 
     for (const airport of airports) {
         await sleep(300); // throttle
